@@ -22,5 +22,5 @@ class Source(BaseModel):
     def _not_blank(cls, v: str) -> str:
         v = v.strip()
         if not v:
-            raise ValueError("identifier が空です")
+            raise ValueError("ソースの識別子が空です")
         return v

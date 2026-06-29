@@ -29,7 +29,7 @@ class Choices(RootModel[tuple[Choice, ...]]):
 
     @field_validator("root")
     @classmethod
-    def _exactly_four(cls, v: tuple[Choice, ...]) -> tuple[Choice, ...]:
+    def _has_required_count(cls, v: tuple[Choice, ...]) -> tuple[Choice, ...]:
         if len(v) != NUM_CHOICES:
             raise ValueError(f"選択肢は{NUM_CHOICES}つ必要です（実際: {len(v)}）")
         return v

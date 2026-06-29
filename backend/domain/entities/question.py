@@ -15,7 +15,7 @@ class Question(BaseModel):
 
     @field_validator("prompt")
     @classmethod
-    def _prompt_not_blank(cls, v: str) -> str:
+    def _not_blank(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("問題文が空です")
         return v
