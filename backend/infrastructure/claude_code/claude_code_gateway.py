@@ -16,7 +16,7 @@ from backend.domain.gateways.claude_code_gateway import (
 CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
 
 # セッションの本文として扱う行の type（tool 操作・スナップショット等のノイズは捨てる）
-_MESSAGE_TYPES = frozenset({"user", "assistant"})
+_MESSAGE_TYPES = frozenset(role.value for role in MessageRole)
 
 
 class ClaudeCodeGateway(IClaudeCodeGateway):
@@ -85,7 +85,8 @@ class ClaudeCodeGateway(IClaudeCodeGateway):
 
     @classmethod
     def _to_message(cls, record: dict[str, Any]) -> ClaudeMessage | None:
-        if record.get("type") not in _MESSAGE_TYPES:
+        record_type = record.get("type")
+        if record_type not in _MESSAGE_TYPES:
             return None
 
         message = record.get("message")
@@ -98,7 +99,7 @@ class ClaudeCodeGateway(IClaudeCodeGateway):
             return None
 
         return ClaudeMessage(
-            role=MessageRole(record["type"]),
+            role=MessageRole(record_type),
             text=text,
             timestamp=timestamp,
         )
