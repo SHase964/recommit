@@ -6,3 +6,7 @@ lint-backend:
 	uv run ruff format backend
 	uv run ruff check --fix backend
 	uv run mypy backend --explicit-package-bases
+
+.PHONY: test
+test:
+	$(EXEC) pytest
