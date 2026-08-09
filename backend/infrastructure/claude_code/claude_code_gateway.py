@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import UTC, datetime
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -13,10 +14,9 @@ from backend.domain.gateways.claude_code_gateway import (
     MessageRole,
 )
 
-CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
+logger = logging.getLogger(__name__)
 
-# セッションの本文として扱う行の type（tool 操作・スナップショット等のノイズは捨てる）
-_MESSAGE_TYPES = frozenset({"user", "assistant"})
+CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
 
 
 class ClaudeCodeGateway(IClaudeCodeGateway):
@@ -30,11 +30,26 @@ class ClaudeCodeGateway(IClaudeCodeGateway):
         self._projects_dir = projects_dir
 
     def read_sessions(self, since: datetime | None = None) -> Iterator[ClaudeCodeSession]:
+        if not self._projects_dir.is_dir():
+            # glob は存在しないディレクトリでも例外を出さず空を返すため、
+            # 設定ミス（パス間違い等）を「セッション0件」と区別できるようログしておく。
+            logger.warning("projects_dir が存在しません: %s", self._projects_dir)
+            return
+
+        threshold = since.astimezone(UTC) if since is not None else None
+        # 1ファイルの破損/読み取り失敗で全体を止めない。該当セッションだけ読み飛ばす。
         for path in sorted(self._projects_dir.glob("*/*.jsonl")):
-            session = self._parse_session(path)
+            try:
+                # jsonl は追記のみなので、mtime が閾値以前なら新しい発言は無い＝パース不要。
+                if threshold is not None and datetime.fromtimestamp(path.stat().st_mtime, tz=UTC) <= threshold:
+                    continue
+                session = self._parse_session(path)
+            except (OSError, ValueError) as exc:
+                logger.warning("セッションの読み取りに失敗したためスキップします: %s (%s)", path, exc)
+                continue
             if session is None:
                 continue
-            if since is not None and session.ended_at <= since:
+            if threshold is not None and session.ended_at <= threshold:
                 continue
             yield session
 
@@ -61,7 +76,7 @@ class ClaudeCodeGateway(IClaudeCodeGateway):
         timestamps = [m.timestamp for m in messages]
         return ClaudeCodeSession(
             session_id=session_id or path.stem,
-            project_path=project_path or path.parent.name,
+            project_path=project_path,
             git_branch=git_branch,
             title=title,
             started_at=min(timestamps),
@@ -79,13 +94,23 @@ class ClaudeCodeGateway(IClaudeCodeGateway):
                 try:
                     record = json.loads(stripped)
                 except json.JSONDecodeError:
+                    logger.debug("JSONとして解釈できない行をスキップしました: %s", path)
                     continue
                 if isinstance(record, dict):
                     yield record
+                else:
+                    logger.debug("dictでないレコードをスキップしました: %s", path)
 
     @classmethod
     def _to_message(cls, record: dict[str, Any]) -> ClaudeMessage | None:
-        if record.get("type") not in _MESSAGE_TYPES:
+        try:
+            role = MessageRole(record.get("type", ""))
+        except ValueError:
+            return None
+        # isSidechain: サブエージェント（Task tool）内部の会話。本人が読んでいない。
+        # isMeta: ハーネスが注入する注意書き（system-reminder等）で、本人の発言ではない。
+        # isCompactSummary: コンテキスト圧縮時の自動要約。元の発言と内容が重複する。
+        if record.get("isSidechain") or record.get("isMeta") or record.get("isCompactSummary"):
             return None
 
         message = record.get("message")
@@ -98,7 +123,7 @@ class ClaudeCodeGateway(IClaudeCodeGateway):
             return None
 
         return ClaudeMessage(
-            role=MessageRole(record["type"]),
+            role=role,
             text=text,
             timestamp=timestamp,
         )

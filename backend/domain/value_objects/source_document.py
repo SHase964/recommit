@@ -6,12 +6,7 @@ from .source import Source
 
 
 class SourceDocument(BaseModel):
-    """QA生成に渡す「学習素材」1件。ソース情報と、加工済みの本文テキストを持つ。
-
-    参照実装の `ScrapedContent`（domain/value_objects）に当たる、ドメインサービスの出力VO。
-    """
-
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     source: Source
     content: StrictStr
