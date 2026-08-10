@@ -923,29 +923,29 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "anthropic" },
-    { name = "mypy" },
     { name = "pydantic" },
-    { name = "ruff" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
+    { name = "mypy" },
     { name = "pytest" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=0.119.0" },
-    { name = "mypy", specifier = ">=2.1.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
-    { name = "ruff", specifier = ">=0.15.20" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "ipykernel", specifier = ">=7.3.0" },
+    { name = "mypy", specifier = ">=2.1.0" },
     { name = "pytest", specifier = ">=8.4.0" },
+    { name = "ruff", specifier = ">=0.15.20" },
 ]
 
 [[package]]

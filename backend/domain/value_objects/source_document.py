@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, StrictStr, field_validator
 
-from .source import Source
+from backend.domain.value_objects.source import Source
 
 
 class SourceDocument(BaseModel):

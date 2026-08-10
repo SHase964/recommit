@@ -4,7 +4,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field, RootModel, StrictInt
 
-from .choice import NUM_CHOICES
+from backend.domain.value_objects.choice import NUM_CHOICES
 
 
 class CorrectIndex(RootModel[Annotated[StrictInt, Field(ge=0, le=NUM_CHOICES - 1)]]):

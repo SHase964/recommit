@@ -11,18 +11,13 @@ from backend.domain.value_objects import Source, SourceDocument, SourceType
 logger = logging.getLogger(__name__)
 
 # ハーネスが自動注入する非・学習テキスト（IDE状態・システム通知・スラッシュコマンド等）。
-# これらは「ユーザが学んだ内容」ではないので学習素材から除外する。
-# isSidechain 等の構造化フィールドと違い、これはメッセージ本文に埋め込まれた文字列で
-# ポート境界を越えて渡ってくるため、「生データ→中立な素材」変換を担うこのサービスで
-# 剥がすのが妥当（infrastructure層に分離すると加工ロジックが2層に分散する）。
 _NOISE_TAG_PATTERN = re.compile(
     r"<(ide_opened_file|ide_selection|system-reminder|command-name|command-message"
     r"|command-args|local-command-stdout)(?:\s[^>]*)?>.*?</\1>",
     re.DOTALL,
 )
 
-# content は最終的に LLM に渡る（QA生成）。よくある形式のAPIキー・トークン・秘密鍵だけを
-# マスクするベストエフォートの対策であり、シークレット検出を網羅・保証するものではない。
+# 頻出な形式のAPIキー・トークン・秘密鍵。
 _SECRET_PATTERNS = (
     re.compile(r"sk-ant-[A-Za-z0-9\-_]{20,}"),
     re.compile(r"gh[pousr]_[A-Za-z0-9]{36,}"),
@@ -32,7 +27,9 @@ _SECRET_PATTERNS = (
 _REDACTED = "[REDACTED]"
 
 
-def _redact_secrets(text: str) -> str:
+def _sanitize(text: str) -> str:
+    """ハーネス由来のノイズタグを剥がし、よくある形式のシークレットをマスクする。"""
+    text = _NOISE_TAG_PATTERN.sub("", text).strip()
     for pattern in _SECRET_PATTERNS:
         text = pattern.sub(_REDACTED, text)
     return text
@@ -65,15 +62,15 @@ class ClaudeCodeLearningService:
         logger.info("収集完了: %d件のSourceDocumentを生成しました", count)
 
     def build_source_document(self, session: ClaudeCodeSession) -> SourceDocument | None:
-        """1セッションを学習素材に変換する。薄すぎて学びにならない場合は None。"""
+        """1セッションを学習素材に変換する"""
         blocks = [
-            f"[{message.role.value}] {_redact_secrets(stripped)}"
+            f"[{message.role.value}] {sanitized}"
             for message in session.messages
-            if (stripped := _NOISE_TAG_PATTERN.sub("", message.text).strip())
+            if (sanitized := _sanitize(message.text))
         ]
 
         content = "\n\n".join(blocks).strip()
-        if len(content) < self._min_content_length:
+        if len(content) < self._min_content_length:  # TODO: 内容が薄い場合の対処法だが、最適かは要検討
             return None
 
         return SourceDocument(

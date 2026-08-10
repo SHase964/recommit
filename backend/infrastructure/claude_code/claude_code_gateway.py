@@ -7,6 +7,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from backend.domain.gateways.claude_code_gateway import (
     ClaudeCodeSession,
     ClaudeMessage,
@@ -44,7 +46,7 @@ class ClaudeCodeGateway(IClaudeCodeGateway):
                 if threshold is not None and datetime.fromtimestamp(path.stat().st_mtime, tz=UTC) <= threshold:
                     continue
                 session = self._parse_session(path)
-            except (OSError, ValueError) as exc:
+            except (OSError, ValidationError) as exc:
                 logger.warning("セッションの読み取りに失敗したためスキップします: %s (%s)", path, exc)
                 continue
             if session is None:

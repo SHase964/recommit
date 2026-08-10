@@ -6,9 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12.6"
 dependencies = [
     "anthropic>=0.119.0",
-    "mypy>=2.1.0",
     "pydantic>=2.13.4",
-    "ruff>=0.15.20",
 ]
 
 [tool.pyright]
@@ -99,5 +97,7 @@ line-ending = "auto"
 [dependency-groups]
 dev = [
     "ipykernel>=7.3.0",
+    "mypy>=2.1.0",
     "pytest>=8.4.0",
+    "ruff>=0.15.20",
 ]
