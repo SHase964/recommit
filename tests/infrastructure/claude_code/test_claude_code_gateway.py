@@ -78,8 +78,14 @@ class TestReadSessions:
         assert session.started_at == datetime(2026, 8, 6, 12, 0, tzinfo=UTC)
         assert session.ended_at == datetime(2026, 8, 6, 12, 5, tzinfo=UTC)
 
-    def test_session_with_no_text_messages_is_dropped(self, tmp_path: Path) -> None:
+    def test_session_with_only_meta_messages_is_dropped(self, tmp_path: Path) -> None:
         _write_jsonl(tmp_path / "proj" / "sess-1.jsonl", [_record(is_meta=True)])
+        gateway = ClaudeCodeGateway(projects_dir=tmp_path)
+
+        assert list(gateway.read_sessions()) == []
+
+    def test_session_with_only_empty_text_messages_is_dropped(self, tmp_path: Path) -> None:
+        _write_jsonl(tmp_path / "proj" / "sess-1.jsonl", [_record(text="")])
         gateway = ClaudeCodeGateway(projects_dir=tmp_path)
 
         assert list(gateway.read_sessions()) == []
@@ -178,9 +184,16 @@ class TestParseSession:
         assert session is not None
         assert session.project_path is None
 
-    def test_returns_none_when_no_text_bearing_messages(self, tmp_path: Path) -> None:
+    def test_returns_none_when_only_meta_messages(self, tmp_path: Path) -> None:
         path = tmp_path / "proj" / "sess.jsonl"
         _write_jsonl(path, [_record(is_meta=True)])
+        gateway = ClaudeCodeGateway(projects_dir=tmp_path)
+
+        assert gateway._parse_session(path) is None
+
+    def test_returns_none_when_message_text_is_empty(self, tmp_path: Path) -> None:
+        path = tmp_path / "proj" / "sess.jsonl"
+        _write_jsonl(path, [_record(text="")])
         gateway = ClaudeCodeGateway(projects_dir=tmp_path)
 
         assert gateway._parse_session(path) is None

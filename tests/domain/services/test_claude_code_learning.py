@@ -89,16 +89,27 @@ class TestBuildSourceDocument:
         assert "ide_opened_file" not in document.content
         assert "system-reminder" not in document.content
 
-    def test_redacts_secrets_in_message_text(self) -> None:
+    @pytest.mark.parametrize(
+        ("label", "secret"),
+        [
+            ("anthropic_api_key", "sk-ant-api03-" + "a" * 30),
+            ("github_token", "ghp_" + "a" * 36),
+            ("aws_access_key_id", "AKIA" + "ABCD1234EFGH5678"),
+            (
+                "pem_private_key",
+                "-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAK...\n-----END RSA PRIVATE KEY-----",
+            ),
+        ],
+    )
+    def test_redacts_secrets_in_message_text(self, label: str, secret: str) -> None:
         service = ClaudeCodeLearningService(gateway=_FakeGateway([]), min_content_length=1)
-        secret = "sk-ant-api03-" + "a" * 30
         session = _session((_message(MessageRole.USER, f"key: {secret} を使ってください"),))
 
         document = service.build_source_document(session)
 
-        assert document is not None
-        assert secret not in document.content
-        assert "[REDACTED]" in document.content
+        assert document is not None, label
+        assert secret not in document.content, label
+        assert "[REDACTED]" in document.content, label
 
     def test_messages_with_only_noise_are_excluded_from_content(self) -> None:
         service = ClaudeCodeLearningService(gateway=_FakeGateway([]), min_content_length=1)
