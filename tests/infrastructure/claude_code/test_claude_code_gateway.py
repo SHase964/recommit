@@ -146,6 +146,40 @@ class TestReadSessions:
         assert [s.session_id for s in sessions] == ["ok"]
         assert "スキップ" in caplog.text
 
+    def test_skips_only_the_invalid_record_and_keeps_the_rest_of_the_session(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        _write_jsonl(
+            tmp_path / "proj" / "sess.jsonl",
+            [
+                _record(text="不正なタイムスタンプの発言", timestamp="not-a-valid-timestamp"),
+                _record(text="正常な発言", timestamp="2026-08-06T12:00:00.000Z"),
+            ],
+        )
+        gateway = ClaudeCodeGateway(projects_dir=tmp_path)
+
+        with caplog.at_level(logging.WARNING):
+            sessions = list(gateway.read_sessions())
+
+        assert len(sessions) == 1
+        assert [m.text for m in sessions[0].messages] == ["正常な発言"]
+        assert "不正な発言レコード" in caplog.text
+
+    def test_skips_file_with_invalid_utf8_bytes_and_continues(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        broken_path = tmp_path / "proj" / "broken.jsonl"
+        broken_path.parent.mkdir(parents=True, exist_ok=True)
+        broken_path.write_bytes(b'{"type": "user", \xff\xfe invalid utf-8 bytes}')
+        _write_jsonl(tmp_path / "proj" / "ok.jsonl", [_record(session_id="ok")])
+        gateway = ClaudeCodeGateway(projects_dir=tmp_path)
+
+        with caplog.at_level(logging.WARNING):
+            sessions = list(gateway.read_sessions())
+
+        assert [s.session_id for s in sessions] == ["ok"]
+        assert "スキップ" in caplog.text
+
 
 class TestParseSession:
     def test_session_id_falls_back_to_filename_stem(self, tmp_path: Path) -> None:

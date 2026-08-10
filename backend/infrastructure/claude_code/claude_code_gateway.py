@@ -39,14 +39,17 @@ class ClaudeCodeGateway(IClaudeCodeGateway):
             return
 
         threshold = since.astimezone(UTC) if since is not None else None
-        # 1ファイルの破損/読み取り失敗で全体を止めない。該当セッションだけ読み飛ばす。
+        # ファイル単位で読めない/開けない場合はそのファイルだけ読み飛ばす（1レコード単位の
+        # 異常は _parse_session 側で個別に吸収するので、ここに来るのはファイル自体が壊れて
+        # いるケース: OSError は権限/削除等、ValueError は UnicodeDecodeError や、
+        # session_id 欠落など「レコード単位では吸収しきれない」ValidationError）。
         for path in sorted(self._projects_dir.glob("*/*.jsonl")):
             try:
                 # jsonl は追記のみなので、mtime が閾値以前なら新しい発言は無い＝パース不要。
                 if threshold is not None and datetime.fromtimestamp(path.stat().st_mtime, tz=UTC) <= threshold:
                     continue
                 session = self._parse_session(path)
-            except (OSError, ValidationError) as exc:
+            except (OSError, ValueError) as exc:
                 logger.warning("セッションの読み取りに失敗したためスキップします: %s (%s)", path, exc)
                 continue
             if session is None:
@@ -68,7 +71,13 @@ class ClaudeCodeGateway(IClaudeCodeGateway):
             git_branch = record.get("gitBranch") or git_branch
             title = record.get("aiTitle") or title
 
-            message = self._to_message(record)
+            try:
+                message = self._to_message(record)
+            except ValidationError as exc:
+                # timestamp が不正な文字列等、1レコードだけの異常でセッション全体を
+                # 捨てないよう、そのレコードだけ読み飛ばして続行する。
+                logger.warning("不正な発言レコードをスキップします: %s (%s)", path, exc)
+                continue
             if message is not None:
                 messages.append(message)
 

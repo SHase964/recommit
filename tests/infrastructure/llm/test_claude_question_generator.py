@@ -135,6 +135,15 @@ class TestBuildUserPrompt:
 
         assert "固有のタイトル" in prompt
 
+    def test_title_is_inside_the_learning_material_boundary(self) -> None:
+        gateway = ClaudeQuestionGeneratorGateway(client=_fake_client())
+        prompt = gateway._build_user_prompt(_document(title="固有のタイトル", content="短い本文"))
+
+        start = prompt.index("<learning_material>")
+        end = prompt.index("</learning_material>")
+        title_pos = prompt.index("固有のタイトル")
+        assert start < title_pos < end
+
     def test_defaults_title_when_missing(self) -> None:
         gateway = ClaudeQuestionGeneratorGateway(client=_fake_client())
         prompt = gateway._build_user_prompt(_document(title=None, content="短い本文"))
