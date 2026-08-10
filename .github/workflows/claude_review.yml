@@ -1,7 +1,7 @@
 name: Claude Auto Review with Tracking
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+    types: [opened, ready_for_review, reopened]
 
 jobs:
   review:
@@ -29,6 +29,10 @@ jobs:
             # 前提
             - 指摘対象は変更差分のみ。周辺の既存コードは整合性確認の参考に読むだけで、指摘はしない。
             - 変更ファイルは差分だけでなく全体を読み、文脈を踏まえること。
+
+            # コメントの書き方
+            - 各コメントは簡潔に。前置きや背景説明は書かず「何が問題か」「どう直すか」の2点のみ。
+            - 目安は3〜5行以内。修正案はコード片や差分の形で短く示す（長文の説明文にしない）。
 
             # 観点
             - 正確性: ロジックの誤り、境界条件、想定外の入力で壊れないか。

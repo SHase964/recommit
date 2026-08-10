@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12.6"
+
+      - run: uv sync --all-extras
+
+      - run: uv run ruff format --check backend tests
+      - run: uv run ruff check backend tests
+      - run: uv run mypy backend tests --explicit-package-bases
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12.6"
+
+      - run: uv sync --all-extras
+
+      - run: uv run pytest
