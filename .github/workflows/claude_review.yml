@@ -45,4 +45,5 @@ jobs:
             - セキュリティ: 機密情報の露出、入力検証、共有状態の扱いに問題がないか。
 
           claude_args: |
+            --model claude-sonnet-5
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
