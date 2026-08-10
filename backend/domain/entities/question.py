@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, StrictStr, field_validator
 
-from ..value_objects import Category, Choice, Choices, CorrectIndex, Source
+from backend.domain.value_objects import Category, Choice, Choices, CorrectIndex, Source
 
 
 class Question(BaseModel):
