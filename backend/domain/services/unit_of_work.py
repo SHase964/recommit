@@ -41,6 +41,12 @@ class IUnitOfWork(AbstractContextManager["IUnitOfWork"]):
         traceback: TracebackType | None,
     ) -> None:
         if exc_type is None:
-            self.commit()
+            try:
+                self.commit()
+            except BaseException:
+                # commit自体が失敗した場合（例: 外部キー制約違反はflush/commit時に判明する）も、
+                # 必ずrollbackしてから伝播させる。しないとセッションが中途半端な状態のまま残る。
+                self.rollback()
+                raise
         else:
             self.rollback()
