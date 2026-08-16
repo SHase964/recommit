@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 # ローカル開発では docker (recommit-db) を、CIでは ci.yml の postgres service を指す。
 _DEFAULT_DATABASE_URL = "postgresql+psycopg://postgres:recommit@localhost:55432/recommit"
 _SCHEMA_SQL_PATH = Path(__file__).resolve().parents[3] / "backend/infrastructure/supabase/schema.sql"
-# 外部キーの子(questions)から先に消す
-_TABLES_IN_DELETE_ORDER = ("questions", "source_documents")
+# 外部キーの子(questions)から先に消す。checkpointsは他と依存関係が無い。
+_TABLES_IN_DELETE_ORDER = ("questions", "source_documents", "checkpoints")
 
 
 @pytest.fixture(scope="session")

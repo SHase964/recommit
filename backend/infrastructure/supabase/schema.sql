@@ -1,4 +1,4 @@
--- recommit の永続化スキーマ。テーブルが2つだけの規模なので、Alembic等は導入せず
+-- recommit の永続化スキーマ。テーブルが3つだけの規模なので、Alembic等は導入せず
 -- 手書きSQLで管理する（テーブルが増えてきたら再検討する）。
 --
 -- gen_random_uuid() は PostgreSQL 13 以降コア機能なので拡張のインストールは不要。
@@ -26,4 +26,12 @@ create table if not exists questions (
     created_at timestamptz not null default now(),
     foreign key (source_type, source_identifier)
         references source_documents (source_type, identifier)
+);
+
+-- 差分読み取り用の最終処理時刻。source_typeごとに1行（バッチ処理のブックキーピングであり、
+-- ドメインの本体データではない）。
+create table if not exists checkpoints (
+    source_type text primary key,
+    last_processed_at timestamptz not null,
+    updated_at timestamptz not null default now()
 );

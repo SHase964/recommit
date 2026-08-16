@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
 
 from backend.domain.entities import Question
+from backend.domain.repositories.checkpoint_repository import ICheckpointRepository
 from backend.domain.repositories.question_repository import IQuestionRepository
 from backend.domain.repositories.source_document_repository import ISourceDocumentRepository
 from backend.domain.services.unit_of_work import IUnitOfWork
-from backend.domain.value_objects import SourceDocument
+from backend.domain.value_objects import SourceDocument, SourceType
 
 
 class _FakeQuestionRepository(IQuestionRepository):
@@ -19,6 +22,14 @@ class _FakeSourceDocumentRepository(ISourceDocumentRepository):
         pass
 
 
+class _FakeCheckpointRepository(ICheckpointRepository):
+    def find_last_processed_at(self, source_type: SourceType) -> datetime | None:
+        return None
+
+    def save(self, source_type: SourceType, processed_at: datetime) -> None:
+        pass
+
+
 class _FakeUnitOfWork(IUnitOfWork):
     def __init__(self, *, fail_on_commit: bool = False) -> None:
         self.committed = False
@@ -26,6 +37,7 @@ class _FakeUnitOfWork(IUnitOfWork):
         self._fail_on_commit = fail_on_commit
         self._source_documents = _FakeSourceDocumentRepository()
         self._questions = _FakeQuestionRepository()
+        self._checkpoints = _FakeCheckpointRepository()
 
     @property
     def source_documents(self) -> ISourceDocumentRepository:
@@ -34,6 +46,10 @@ class _FakeUnitOfWork(IUnitOfWork):
     @property
     def questions(self) -> IQuestionRepository:
         return self._questions
+
+    @property
+    def checkpoints(self) -> ICheckpointRepository:
+        return self._checkpoints
 
     def commit(self) -> None:
         if self._fail_on_commit:

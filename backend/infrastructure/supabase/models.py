@@ -8,7 +8,6 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from backend.domain.entities import Question
-from backend.domain.value_objects import SourceDocument
 
 # ORMモデルは schema.sql と対になる（Alembic等は使わず手書きSQLで管理しているため、
 # 列の追加・変更時は両方を手で揃える必要がある）。
@@ -31,15 +30,6 @@ class SourceDocumentModel(Base):
     content: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
-
-    @classmethod
-    def from_domain(cls, document: SourceDocument) -> SourceDocumentModel:
-        return cls(
-            source_type=document.source.source_type.value,
-            identifier=document.source.identifier,
-            title=document.source.title,
-            content=document.content,
-        )
 
 
 class QuestionModel(Base):
@@ -75,3 +65,11 @@ class QuestionModel(Base):
             source_type=question.source.source_type.value,
             source_identifier=question.source.identifier,
         )
+
+
+class CheckpointModel(Base):
+    __tablename__ = "checkpoints"
+
+    source_type: Mapped[str] = mapped_column(primary_key=True)
+    last_processed_at: Mapped[datetime] = mapped_column(nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
