@@ -4,16 +4,17 @@ from abc import abstractmethod
 from contextlib import AbstractContextManager
 from types import TracebackType
 
+from backend.domain.repositories.checkpoint_repository import ICheckpointRepository
 from backend.domain.repositories.question_repository import IQuestionRepository
 from backend.domain.repositories.source_document_repository import ISourceDocumentRepository
 
 
 class IUnitOfWork(AbstractContextManager["IUnitOfWork"]):
-    """SourceDocument保存とQuestion保存を1つのトランザクションで確定させる境界。
+    """SourceDocument保存・Question保存・チェックポイント更新を1トランザクションで確定させる境界。
 
     with ブロックを正常に抜けたときは commit、例外が発生したときは rollback を
     __exit__ で自動的に行う（呼び出し側は commit/rollback を明示しない）。
-    片方だけ成功して片方が失敗する中途半端な状態（例: SourceDocumentは保存できたが
+    一部だけ成功して一部が失敗する中途半端な状態（例: SourceDocumentは保存できたが
     Questionの保存に失敗し、差分読み取りの基準時刻だけが進んでしまい、そのセッション分の
     Questionが永久に生成されなくなる）を防ぐのが目的。
     """
@@ -21,12 +22,17 @@ class IUnitOfWork(AbstractContextManager["IUnitOfWork"]):
     @property
     @abstractmethod
     def source_documents(self) -> ISourceDocumentRepository:
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def questions(self) -> IQuestionRepository:
-        raise NotImplementedError
+        pass
+
+    @property
+    @abstractmethod
+    def checkpoints(self) -> ICheckpointRepository:
+        pass
 
     @abstractmethod
     def commit(self) -> None: ...
@@ -41,6 +47,12 @@ class IUnitOfWork(AbstractContextManager["IUnitOfWork"]):
         traceback: TracebackType | None,
     ) -> None:
         if exc_type is None:
-            self.commit()
+            try:
+                self.commit()
+            except BaseException:
+                # commit自体が失敗した場合（例: 外部キー制約違反はflush/commit時に判明する）も、
+                # 必ずrollbackしてから伝播させる。しないとセッションが中途半端な状態のまま残る。
+                self.rollback()
+                raise
         else:
             self.rollback()
